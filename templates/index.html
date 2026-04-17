@@ -283,6 +283,60 @@
             display: block;
         }
 
+        .error-display {
+            background: #fed7d7;
+            border: 1px solid #fc8181;
+            border-radius: 10px;
+            padding: 20px;
+            color: #c53030;
+            text-align: center;
+        }
+
+        .error-display h4 {
+            margin-bottom: 10px;
+            color: #9b2c2c;
+        }
+
+        .error-display p {
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        .error-display button {
+            background: #fc8181;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .error-display button:hover {
+            background: #f56565;
+        }
+
+        .global-error {
+            background: #fed7d7;
+            border: 2px solid #fc8181;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            color: #c53030;
+            display: none;
+        }
+
+        .global-error.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .global-error h4 {
+            margin-bottom: 8px;
+            color: #9b2c2c;
+        }
+
         @media (max-width: 1000px) {
             .grid {
                 grid-template-columns: 1fr;
@@ -294,15 +348,22 @@
     <div class="container">
         <h1>🍔 麦当劳用户喜好预测系统</h1>
 
+        <div id="globalError" class="global-error">
+            <h4>⚠️ 系统错误</h4>
+            <p id="globalErrorText">无法连接到服务器，请检查后端服务是否启动。</p>
+        </div>
+
         <div class="grid">
             <div class="card">
                 <h2>📊 用户特征输入</h2>
 
                 <div class="model-info">
                     <h3>模型信息</h3>
-                    <ul id="modelInfoList">
-                        <li>加载中...</li>
-                    </ul>
+                    <div id="modelInfoContainer">
+                        <ul id="modelInfoList">
+                            <li>加载中...</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <form id="predictionForm">
@@ -373,34 +434,38 @@
                 </div>
 
                 <div id="testTab" class="tab-content active">
-                    <div class="metrics-grid" id="testMetrics">
-                        <div class="metric-card">
-                            <div class="loading">
-                                <div class="spinner"></div>
-                                <div>加载中...</div>
+                    <div id="testMetricsContainer">
+                        <div class="metrics-grid" id="testMetrics">
+                            <div class="metric-card">
+                                <div class="loading">
+                                    <div class="spinner"></div>
+                                    <div>加载中...</div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="loading">
-                                <div class="spinner"></div>
-                                <div>加载中...</div>
+                            <div class="metric-card">
+                                <div class="loading">
+                                    <div class="spinner"></div>
+                                    <div>加载中...</div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div id="trainTab" class="tab-content">
-                    <div class="metrics-grid" id="trainMetrics">
-                        <div class="metric-card">
-                            <div class="loading">
-                                <div class="spinner"></div>
-                                <div>加载中...</div>
+                    <div id="trainMetricsContainer">
+                        <div class="metrics-grid" id="trainMetrics">
+                            <div class="metric-card">
+                                <div class="loading">
+                                    <div class="spinner"></div>
+                                    <div>加载中...</div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="loading">
-                                <div class="spinner"></div>
-                                <div>加载中...</div>
+                            <div class="metric-card">
+                                <div class="loading">
+                                    <div class="spinner"></div>
+                                    <div>加载中...</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -411,8 +476,10 @@
         <div class="grid">
             <div class="card full-width">
                 <h2>🎯 特征重要性分析</h2>
-                <div class="chart-container">
-                    <canvas id="importanceChart"></canvas>
+                <div id="featureImportanceContainer">
+                    <div class="chart-container">
+                        <canvas id="importanceChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -421,6 +488,56 @@
     <script>
         let evaluationData = null;
         let importanceChart = null;
+        let hasGlobalError = false;
+
+        function showGlobalError(message) {
+            hasGlobalError = true;
+            const errorDiv = document.getElementById('globalError');
+            document.getElementById('globalErrorText').textContent = message;
+            errorDiv.classList.add('show');
+        }
+
+        function hideGlobalError() {
+            hasGlobalError = false;
+            const errorDiv = document.getElementById('globalError');
+            errorDiv.classList.remove('show');
+        }
+
+        function renderError(containerId, message, retryCallback = null) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            let retryButton = '';
+            if (retryCallback) {
+                retryButton = `<button onclick="(${retryCallback.toString()})()">重试</button>`;
+            }
+
+            container.innerHTML = `
+                <div class="error-display">
+                    <h4>❌ 加载失败</h4>
+                    <p>${message}</p>
+                    ${retryButton}
+                </div>
+            `;
+        }
+
+        function renderEmptyMetrics(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            container.innerHTML = `
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">-</div>
+                        <div class="metric-label">准确率</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">-</div>
+                        <div class="metric-label">F1-score</div>
+                    </div>
+                </div>
+            `;
+        }
 
         async function loadModelInfo() {
             try {
@@ -436,9 +553,14 @@
                         <li>投票方式: ${info.voting}</li>
                         <li>特征数量: ${info.features.length}</li>
                     `;
+                    hideGlobalError();
+                } else {
+                    renderError('modelInfoContainer', result.error || '无法获取模型信息');
                 }
             } catch (error) {
                 console.error('Failed to load model info:', error);
+                renderError('modelInfoContainer', '网络错误: ' + error.message);
+                showGlobalError('无法连接到服务器，请确保后端服务已启动。');
             }
         }
 
@@ -450,9 +572,16 @@
                 if (result.success) {
                     evaluationData = result.data;
                     updateMetricsDisplay();
+                    hideGlobalError();
+                } else {
+                    renderError('testMetricsContainer', result.error || '无法获取评估数据');
+                    renderError('trainMetricsContainer', result.error || '无法获取评估数据');
                 }
             } catch (error) {
                 console.error('Failed to load evaluation:', error);
+                renderError('testMetricsContainer', '网络错误: ' + error.message);
+                renderError('trainMetricsContainer', '网络错误: ' + error.message);
+                showGlobalError('无法连接到服务器，请确保后端服务已启动。');
             }
         }
 
@@ -463,29 +592,37 @@
             const train = evaluationData.train;
 
             if (test) {
-                document.getElementById('testMetrics').innerHTML = `
-                    <div class="metric-card">
-                        <div class="metric-value">${(test.accuracy * 100).toFixed(1)}%</div>
-                        <div class="metric-label">测试集准确率</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value">${(test.f1_score * 100).toFixed(1)}%</div>
-                        <div class="metric-label">测试集 F1-score</div>
+                document.getElementById('testMetricsContainer').innerHTML = `
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">${(test.accuracy * 100).toFixed(1)}%</div>
+                            <div class="metric-label">测试集准确率</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${(test.f1_score * 100).toFixed(1)}%</div>
+                            <div class="metric-label">测试集 F1-score</div>
+                        </div>
                     </div>
                 `;
+            } else {
+                renderEmptyMetrics('testMetricsContainer');
             }
 
             if (train) {
-                document.getElementById('trainMetrics').innerHTML = `
-                    <div class="metric-card">
-                        <div class="metric-value">${(train.accuracy * 100).toFixed(1)}%</div>
-                        <div class="metric-label">训练集准确率</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value">${(train.f1_score * 100).toFixed(1)}%</div>
-                        <div class="metric-label">训练集 F1-score</div>
+                document.getElementById('trainMetricsContainer').innerHTML = `
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">${(train.accuracy * 100).toFixed(1)}%</div>
+                            <div class="metric-label">训练集准确率</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${(train.f1_score * 100).toFixed(1)}%</div>
+                            <div class="metric-label">训练集 F1-score</div>
+                        </div>
                     </div>
                 `;
+            } else {
+                renderEmptyMetrics('trainMetricsContainer');
             }
         }
 
@@ -496,15 +633,25 @@
 
                 if (result.success) {
                     renderFeatureImportance(result.data);
+                    hideGlobalError();
+                } else {
+                    renderError('featureImportanceContainer', result.error || '无法获取特征重要性');
                 }
             } catch (error) {
                 console.error('Failed to load feature importance:', error);
+                renderError('featureImportanceContainer', '网络错误: ' + error.message);
+                showGlobalError('无法连接到服务器，请确保后端服务已启动。');
             }
         }
 
         function renderFeatureImportance(data) {
             const labels = Object.keys(data);
             const values = Object.values(data);
+
+            if (labels.length === 0) {
+                renderError('featureImportanceContainer', '没有特征重要性数据');
+                return;
+            }
 
             const colors = labels.map((_, i) => {
                 const hue = (i * 360 / labels.length);
