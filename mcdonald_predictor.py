@@ -58,44 +58,43 @@ class McDonaldPredictor:
 
             if self.TARGET not in data.columns:
                 raise InputValidationError(f"Missing target column: {self.TARGET}")
+
+            valid_targets = {0, 1}
+            invalid_target = data[~data[self.TARGET].isin(valid_targets)]
+            if not invalid_target.empty:
+                raise InputValidationError(f"Invalid target values. Must be 0 or 1.")
         else:
             missing_features = [f for f in self.ALL_FEATURES if f not in data.columns]
             if missing_features:
                 raise InputValidationError(f"Missing required features for prediction: {missing_features}")
 
-        if 'age' in data.columns:
-            invalid_age = data[(data['age'] < 0) | (data['age'] > 120)]
-            if not invalid_age.empty:
-                raise InputValidationError(f"Invalid age values detected. Age must be between 0 and 120.")
+            if 'age' in data.columns:
+                invalid_age = data[(data['age'] < 18) | (data['age'] > 100)]
+                if not invalid_age.empty:
+                    raise InputValidationError(f"Invalid age values detected. Age must be between 18 and 100.")
 
-        if 'income' in data.columns:
-            invalid_income = data[data['income'] < 0]
-            if not invalid_income.empty:
-                raise InputValidationError(f"Invalid income values detected. Income cannot be negative.")
+            if 'income' in data.columns:
+                invalid_income = data[data['income'] < 0]
+                if not invalid_income.empty:
+                    raise InputValidationError(f"Invalid income values detected. Income cannot be negative.")
 
-        if 'gender' in data.columns:
-            valid_genders = {'male', 'female'}
-            invalid_gender = data[~data['gender'].isin(valid_genders)]
-            if not invalid_gender.empty:
-                raise InputValidationError(f"Invalid gender values. Must be one of: {valid_genders}")
+            if 'gender' in data.columns:
+                valid_genders = {'male', 'female'}
+                invalid_gender = data[~data['gender'].isin(valid_genders)]
+                if not invalid_gender.empty:
+                    raise InputValidationError(f"Invalid gender values. Must be one of: {valid_genders}")
 
-        if 'visit_frequency' in data.columns:
-            valid_visits = set(self.VISIT_FREQUENCY_ORDER)
-            invalid_visit = data[~data['visit_frequency'].isin(valid_visits)]
-            if not invalid_visit.empty:
-                raise InputValidationError(f"Invalid visit_frequency values. Must be one of: {valid_visits}")
+            if 'visit_frequency' in data.columns:
+                valid_visits = set(self.VISIT_FREQUENCY_ORDER)
+                invalid_visit = data[~data['visit_frequency'].isin(valid_visits)]
+                if not invalid_visit.empty:
+                    raise InputValidationError(f"Invalid visit_frequency values. Must be one of: {valid_visits}")
 
-        if 'satisfaction_level' in data.columns:
-            valid_satisfaction = set(self.SATISFACTION_ORDER)
-            invalid_satisfaction = data[~data['satisfaction_level'].isin(valid_satisfaction)]
-            if not invalid_satisfaction.empty:
-                raise InputValidationError(f"Invalid satisfaction_level values. Must be one of: {valid_satisfaction}")
-
-        if for_training and self.TARGET in data.columns:
-            valid_targets = {0, 1}
-            invalid_target = data[~data[self.TARGET].isin(valid_targets)]
-            if not invalid_target.empty:
-                raise InputValidationError(f"Invalid target values. Must be 0 or 1.")
+            if 'satisfaction_level' in data.columns:
+                valid_satisfaction = set(self.SATISFACTION_ORDER)
+                invalid_satisfaction = data[~data['satisfaction_level'].isin(valid_satisfaction)]
+                if not invalid_satisfaction.empty:
+                    raise InputValidationError(f"Invalid satisfaction_level values. Must be one of: {valid_satisfaction}")
 
     def _preprocess_data(self, data: pd.DataFrame, for_training: bool = True) -> pd.DataFrame:
         processed = data.copy()
